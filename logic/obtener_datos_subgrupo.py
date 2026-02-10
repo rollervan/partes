@@ -1,5 +1,6 @@
 import pandas as pd
 import numpy as np
+from logic.config import MAPA_TITULACIONES, IDX_COMUNES
 
 def obtener_datos_subgrupo(df, codigo):
     codigo = codigo.upper()
