@@ -4,12 +4,12 @@ import io
 
 # Importación de módulos locales
 # Asegúrate de que todos los archivos .py estén en la misma carpeta o ajusta los imports
-from config import MAPA_TITULACIONES
-import utils
-from obtener_datos_subgrupo import obtener_datos_subgrupo
-from generar_resumen_datos import generar_resumen_datos
-from generar_partes_docentes import generar_partes_docentes
-from genera_graficas import genera_graficas
+from logic.config import MAPA_TITULACIONES
+import logic.utils
+from logic.obtener_datos_subgrupo import obtener_datos_subgrupo
+from logic.generar_resumen_datos import generar_resumen_datos
+from logic.generar_partes_docentes import generar_partes_docentes
+from logic.genera_graficas import genera_graficas
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
