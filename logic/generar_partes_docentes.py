@@ -2,6 +2,7 @@ import pandas as pd
 from docx import Document
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
+import io
 
 # --- FUNCIONES AUXILIARES ---
 
@@ -40,7 +41,7 @@ def add_qa_bloque(doc, pregunta, respuesta):
 
 # --- FUNCIÓN PRINCIPAL ---
 
-def generar_partes_docentes(df, nombre_salida="Informe_Partes_Docentes.docx"):
+def generar_partes_docentes(df):
     """
     Genera UN ÚNICO documento Word con todas las asignaturas, 
     ordenadas por Curso > Cuatrimestre > Asignatura.
@@ -156,9 +157,9 @@ def generar_partes_docentes(df, nombre_salida="Informe_Partes_Docentes.docx"):
         if index != df_sorted.index[-1]:
             doc.add_page_break()
 
-    # 4. GUARDAR
-    try:
-        doc.save(nombre_salida)
-        print(f"✅ Documento guardado exitosamente: {nombre_salida}")
-    except PermissionError:
-        print("❌ Error: Cierra el archivo Word si lo tienes abierto e inténtalo de nuevo.")
+    # --- 4. GUARDAR EN MEMORIA (CAMBIO PRINCIPAL) ---
+    buffer = io.BytesIO()  # Creamos un archivo en memoria RAM
+    doc.save(buffer)       # Guardamos el Word en ese buffer
+    buffer.seek(0)         # Rebobinamos al principio del archivo
+    
+    return buffer          # Devolvemos el objeto para que Streamlit lo descargue
