@@ -29,11 +29,10 @@ el informe final en formato Word y la presentación en PowerPoint.
 with st.sidebar:
     st.header("Configuración")
     
-    # 1. Subida de Archivo de Datos
-    uploaded_file = st.file_uploader("1. Cargar Excel de Encuestas", type=["xlsx", "xls"])
+    # 1. Subida de Archivo de Datos (SOLO EL EXCEL)
+    uploaded_file = st.file_uploader("Cargar Excel de Encuestas", type=["xlsx", "xls"])
     
-    # NUEVO: Subida de Plantilla PPT
-    plantilla_ppt = st.file_uploader("2. Cargar Plantilla PPTX (Opcional)", type=["pptx"])
+    # NOTA: Ya no pedimos la plantilla PPT aquí porque está en la carpeta assets
     
     st.markdown("---")
     
@@ -121,32 +120,37 @@ if uploaded_file is not None:
                         data=buffer_word,
                         file_name=f"Informe_Calidad_{titulacion_seleccionada}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                        key="btn_word" # Clave única
+                        key="btn_word"
                     )
                 
                 # --- COLUMNA 2: POWERPOINT ---
                 with col_ppt:
                     st.markdown("### 📊 Presentación PowerPoint")
-                    st.info("Presentación ejecutiva con gráficas y resumen.")
+                    st.info("Genera el PPT rellenando la plantilla corporativa automáticamente.")
                     
-                    # Botón para generar el PPT (consume recursos, así que lo hacemos bajo demanda)
-                    if st.button("Preparar PowerPoint", key="btn_prep_ppt"):
-                        with st.spinner("Generando diapositivas y gráficas..."):
-                            # 1. Necesitamos las figuras para el PPT (las regeneramos para asegurar que estén frescas)
-                            figs_para_ppt = genera_graficas(df_resumen)
-                            
-                            # 2. Generamos el archivo PPT
-                            buffer_ppt = generar_ppt(df_resumen, figs_para_ppt, plantilla_ppt)
-                            
-                            # 3. Botón de descarga (aparece tras generarse)
-                            st.success("✅ Presentación lista")
-                            st.download_button(
-                                label="Descargar Presentación .PPTX",
-                                data=buffer_ppt,
-                                file_name=f"Presentacion_{titulacion_seleccionada}.pptx",
-                                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                                key="btn_down_ppt"
-                            )
+                    # Botón para generar el PPT
+                    if st.button("Generar PowerPoint", key="btn_prep_ppt"):
+                        with st.spinner("Inyectando datos en la plantilla..."):
+                            try:
+                                # 1. Necesitamos las figuras para el PPT
+                                figs_para_ppt = genera_graficas(df_resumen)
+                                
+                                # 2. Generamos el archivo PPT
+                                # NOTA: Ya no pasamos la plantilla como argumento, la busca en assets/
+                                buffer_ppt = generar_ppt(df_resumen, figs_para_ppt)
+                                
+                                # 3. Botón de descarga
+                                st.success("✅ Presentación generada correctamente")
+                                st.download_button(
+                                    label="Descargar Presentación .PPTX",
+                                    data=buffer_ppt,
+                                    file_name=f"Presentacion_{titulacion_seleccionada}.pptx",
+                                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                                    key="btn_down_ppt"
+                                )
+                            except Exception as e:
+                                st.error(f"Error al generar el PowerPoint: {e}")
+                                st.warning("Por favor, verifica que el archivo 'Plantilla_ReunionesCoordinacionFinCuatrimestre.pptx' existe en la carpeta 'assets'.")
                 
         else:
             st.error("❌ No se encontraron datos.")
