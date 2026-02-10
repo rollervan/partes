@@ -2,10 +2,10 @@ import streamlit as st
 import pandas as pd
 import io
 
-# Importación de módulos locales
-# Asegúrate de que todos los archivos .py estén en la misma carpeta o ajusta los imports
+# --- IMPORTS DE TU LÓGICA ---
+# Usamos el alias 'utils' para evitar el error 'name utils is not defined'
+import logic.utils as utils 
 from logic.config import MAPA_TITULACIONES
-import logic.utils as utils
 from logic.obtener_datos_subgrupo import obtener_datos_subgrupo
 from logic.generar_resumen_datos import generar_resumen_datos
 from logic.generar_partes_docentes import generar_partes_docentes
@@ -34,6 +34,7 @@ with st.sidebar:
     st.markdown("---")
     
     # 2. Selectores
+    # Obtenemos las claves del diccionario config.py
     titulaciones_disponibles = list(MAPA_TITULACIONES.keys())
     titulacion_seleccionada = st.selectbox("Seleccionar Titulación/Grupo", titulaciones_disponibles)
     
@@ -44,26 +45,24 @@ with st.sidebar:
 # --- LÓGICA PRINCIPAL ---
 if uploaded_file is not None:
     try:
-        # Carga de datos
+        # Carga de datos con spinner visual
         with st.spinner('Cargando y procesando archivo...'):
             df_raw = pd.read_excel(uploaded_file)
             
-            # Filtro por fechas (utils.py)
-            # Convertimos fechas de Streamlit a string si tu utils lo requiere, 
-            # o pasamos objeto datetime si lo adaptaste. 
-            # Asumiendo tu utils espera string 'DD-MM-AAAA':
+            # Preparar fechas (utils espera strings DD-MM-YYYY)
             f_inicio_str = fecha_inicio.strftime('%d-%m-%Y')
             f_fin_str = fecha_fin.strftime('%d-%m-%Y') if fecha_fin else None
             
+            # Filtramos el DataFrame completo
             df_filtrado = utils.filtrar_por_fechas(df_raw, f_inicio_str, f_fin_str)
             
-            # Obtención del Subgrupo
+            # Obtenemos solo los datos de la titulación seleccionada
             df_subgrupo = obtener_datos_subgrupo(df_filtrado, titulacion_seleccionada)
         
         # Verificación de resultados
         if df_subgrupo is not None and not df_subgrupo.empty:
             
-            # Generación de Resumen Numérico
+            # Generación de Resumen Numérico (Tabla limpia)
             df_resumen = generar_resumen_datos(df_subgrupo)
             
             # --- TABS DE RESULTADOS ---
@@ -73,43 +72,46 @@ if uploaded_file is not None:
             with tab1:
                 st.subheader(f"Datos: {titulacion_seleccionada}")
                 
-                # Métricas rápidas
-                col1, col2, col3 = st.columns(3)
+                # Métricas rápidas (KPIs)
+                col1, col2 = st.columns(2)
                 total_asignaturas = len(df_resumen)
-                media_aprobados = df_resumen['% Aprobados'].mean()
+                # Calculamos media evitando errores si está vacío
+                media_aprobados = df_resumen['% Aprobados'].mean() if not df_resumen.empty else 0
                 
-                col1.metric("Asignaturas", total_asignaturas)
-                col2.metric("Media Aprobados", f"{media_aprobados:.2f}%")
+                col1.metric("Asignaturas Procesadas", total_asignaturas)
+                col2.metric("Media % Aprobados", f"{media_aprobados:.2f}%")
                 
                 # Tabla Interactiva
-                st.dataframe(df_resumen, use_container_width=True)
+                # CORRECCIÓN: Quitamos use_container_width para evitar el warning
+                st.dataframe(df_resumen) 
 
             # TAB 2: GRÁFICAS
             with tab2:
                 st.subheader("Visualización de Resultados")
                 
+                # Botón para generar gráficas solo si se pide (ahorra recursos)
                 if st.button("Generar Gráficas de Análisis"):
                     with st.spinner("Generando gráficas..."):
-                        # Llamamos a la función modificada que devuelve lista de figuras
+                        # Llamamos a genera_graficas (que ahora devuelve una lista de figuras)
                         lista_figuras = genera_graficas(df_resumen)
                         
                         if lista_figuras:
-                            # Mostramos las gráficas en grid
+                            # Mostramos las gráficas una tras otra
                             for titulo, fig in lista_figuras:
-                                st.markdown(f"**{titulo}**")
+                                st.markdown(f"### {titulo}")
                                 st.pyplot(fig)
                         else:
-                            st.warning("No se pudieron generar gráficas con los datos actuales.")
+                            st.warning("No hay datos suficientes para generar las gráficas.")
 
-            # TAB 3: EXPORTAR
+            # TAB 3: EXPORTAR WORD
             with tab3:
                 st.subheader("Generación de Documentos")
-                st.info("Genera un informe Word completo con portada, tablas de datos y comentarios cualitativos.")
+                st.info("Genera un informe Word completo con portada, tablas de datos y comentarios.")
                 
-                # Botón de descarga
-                # Procesamos el Word en memoria al momento de presionar, o lo preparamos antes
+                # Generamos el Word en memoria (RAM)
                 buffer_word = generar_partes_docentes(df_subgrupo)
                 
+                # Botón de descarga
                 st.download_button(
                     label="📄 Descargar Informe .DOCX",
                     data=buffer_word,
@@ -118,12 +120,12 @@ if uploaded_file is not None:
                 )
                 
         else:
-            st.error("❌ No se encontraron datos para la titulación seleccionada en el rango de fechas indicado.")
-            st.warning("Verifica que las columnas del Excel coincidan con las definidas en 'config.py'.")
+            st.error("❌ No se encontraron datos.")
+            st.warning(f"Revisa que la titulación '{titulacion_seleccionada}' tenga datos en el rango de fechas seleccionado.")
 
     except Exception as e:
         st.error("Ocurrió un error inesperado:")
-        st.code(e)
+        st.exception(e) # Muestra el error técnico de forma más clara
 else:
-    # Mensaje de bienvenida si no hay archivo
+    # Mensaje inicial
     st.info("👋 Por favor, carga un archivo Excel en la barra lateral para comenzar.")
