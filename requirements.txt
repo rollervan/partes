@@ -3,3 +3,4 @@ python-docx
 matplotlib
 seaborn
 openpyxl
+python-pptx
