@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
+import os  # NUEVO: Para gestionar el borrado del archivo temporal
 
 # --- IMPORTS DE TU LÓGICA ---
 import logic.utils as utils 
@@ -128,18 +129,43 @@ if uploaded_file is not None:
                     st.markdown("### 📊 Presentación PowerPoint")
                     st.info("Genera el PPT rellenando la plantilla corporativa automáticamente.")
                     
+                    # --- NUEVO: CARGA DE JSON PARA PPT ---
+                    st.markdown("#### Datos del Acta (Opcional)")
+                    uploaded_json = st.file_uploader(
+                        "Sube el JSON con datos del acta (generado por IA)", 
+                        type=["json"],
+                        help="Si subes este archivo, se rellenarán los textos de la plantilla."
+                    )
+                    
+                    if uploaded_json:
+                        st.success("✅ JSON cargado. Se usará para rellenar la plantilla.")
+
+                    st.markdown("---")
+                    
                     # Botón para generar el PPT
                     if st.button("Generar PowerPoint", key="btn_prep_ppt"):
-                        with st.spinner("Inyectando datos en la plantilla..."):
+                        with st.spinner("Inyectando datos y gráficas en la plantilla..."):
                             try:
                                 # 1. Necesitamos las figuras para el PPT
                                 figs_para_ppt = genera_graficas(df_resumen)
                                 
-                                # 2. Generamos el archivo PPT
-                                # NOTA: Ya no pasamos la plantilla como argumento, la busca en assets/
-                                buffer_ppt = generar_ppt(df_resumen, figs_para_ppt)
+                                # 2. GESTIÓN DEL ARCHIVO JSON TEMPORAL
+                                ruta_temporal_json = None
+                                if uploaded_json is not None:
+                                    # Guardamos el archivo en disco temporalmente porque generar_ppt espera una ruta
+                                    ruta_temporal_json = f"temp_acta_{titulacion_seleccionada}.json"
+                                    with open(ruta_temporal_json, "wb") as f:
+                                        f.write(uploaded_json.getbuffer())
                                 
-                                # 3. Botón de descarga
+                                # 3. Generamos el archivo PPT
+                                # Pasamos la ruta del json (si existe) o None
+                                buffer_ppt = generar_ppt(
+                                    df_resumen, 
+                                    figs_para_ppt, 
+                                    ruta_json=ruta_temporal_json
+                                )
+                                
+                                # 4. Botón de descarga
                                 st.success("✅ Presentación generada correctamente")
                                 st.download_button(
                                     label="Descargar Presentación .PPTX",
@@ -148,6 +174,11 @@ if uploaded_file is not None:
                                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
                                     key="btn_down_ppt"
                                 )
+
+                                # 5. LIMPIEZA: Borramos el json temporal si se creó
+                                if ruta_temporal_json and os.path.exists(ruta_temporal_json):
+                                    os.remove(ruta_temporal_json)
+
                             except Exception as e:
                                 st.error(f"Error al generar el PowerPoint: {e}")
                                 st.warning("Por favor, verifica que el archivo 'Plantilla_ReunionesCoordinacionFinCuatrimestre.pptx' existe en la carpeta 'assets'.")
