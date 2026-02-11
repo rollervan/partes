@@ -1,26 +1,10 @@
 import io
-import json  # Importamos librería para leer el archivo
+import json
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN
 from pptx.dml.color import RGBColor
-
-def limpiar_texto(texto):
-    """Ayuda a normalizar textos para comparaciones"""
-    if not texto: return ""
-    return texto.strip().lower()
-
-def buscar_diapositiva(prs, titulo_buscado):
-    """Busca una slide que contenga el texto del título buscado."""
-    titulo_buscado = limpiar_texto(titulo_buscado)
-    
-    for slide in prs.slides:
-        if slide.shapes.title and slide.shapes.title.text:
-            titulo_slide = limpiar_texto(slide.shapes.title.text)
-            if titulo_buscado in titulo_slide:
-                return slide
-    return None
 
 def df_to_ppt_table(slide, df, left, top, width, height):
     """Dibuja la tabla en la slide indicada."""
@@ -31,7 +15,7 @@ def df_to_ppt_table(slide, df, left, top, width, height):
     table_shape = slide.shapes.add_table(rows + 1, cols, left, top, width, height)
     table = table_shape.table
 
-    # Estilos básicos
+    # Estilos básicos cabecera
     for col_idx, col_name in enumerate(df_to_print.columns):
         cell = table.cell(0, col_idx)
         cell.text = str(col_name)
@@ -39,10 +23,10 @@ def df_to_ppt_table(slide, df, left, top, width, height):
         p.font.bold = True
         p.font.size = Pt(9)
         p.alignment = PP_ALIGN.CENTER
-        # Fondo gris claro para cabecera
         cell.fill.solid()
         cell.fill.fore_color.rgb = RGBColor(220, 220, 220)
 
+    # Cuerpo de la tabla
     for row_idx, row in df_to_print.iterrows():
         for col_idx, value in enumerate(row):
             cell = table.cell(row_idx + 1, col_idx)
@@ -76,23 +60,18 @@ def reemplazar_marcadores(prs, diccionario_datos):
         return
 
     def sustituir_en_parrafo(paragraph, datos):
-        """Función auxiliar para procesar un párrafo."""
         for run in paragraph.runs:
             texto_run = run.text
             for marcador, valor in datos.items():
                 if marcador in texto_run:
-                    # str(valor) asegura que no falle si el dato es un número
                     run.text = texto_run.replace(marcador, str(valor))
 
-    # Recorremos todas las diapositivas
     for slide in prs.slides:
         for shape in slide.shapes:
-            # Caso A: Cuadros de texto
             if shape.has_text_frame:
                 for paragraph in shape.text_frame.paragraphs:
                     sustituir_en_parrafo(paragraph, diccionario_datos)
             
-            # Caso B: Tablas
             if shape.has_table:
                 for row in shape.table.rows:
                     for cell in row.cells:
@@ -101,76 +80,76 @@ def reemplazar_marcadores(prs, diccionario_datos):
 
 def generar_ppt(df, lista_figuras, ruta_json=None):
     """
-    Carga la plantilla fija y rellena datos en slides específicas.
-    Args:
-        df: DataFrame para la tabla resumen.
-        lista_figuras: Lista de tuplas (titulo, figura_matplotlib).
-        ruta_json: (Opcional) Ruta al archivo .json con los datos a sustituir.
+    Genera el PPT:
+    1. Carga plantilla.
+    2. Sustituye marcadores (si hay JSON).
+    3. Añade NUEVAS slides para tablas, placeholders y gráficas.
     """
-    # 1. Cargar plantilla desde la carpeta assets
+    
+    # 1. CARGAR PLANTILLA
     ruta_plantilla = "assets/Plantilla_ReunionesCoordinacionFinCuatrimestre.pptx"
     try:
         prs = Presentation(ruta_plantilla)
     except Exception as e:
-        # Si falla, creamos una en blanco para no romper la app, pero avisamos
         print(f"Error cargando plantilla: {e}")
         prs = Presentation()
 
-    # --- NUEVO: CARGAR JSON Y SUSTITUIR ---
+    # 2. SUSTITUCIÓN DE TEXTO (PRIORIDAD MÁXIMA)
     if ruta_json:
         try:
             with open(ruta_json, 'r', encoding='utf-8') as f:
                 datos_diccionario = json.load(f)
-            # Llamamos a la función de reemplazo con los datos cargados
             reemplazar_marcadores(prs, datos_diccionario)
         except Exception as e:
             print(f"Error cargando o procesando el archivo JSON: {e}")
 
-    # --- 1. INSERTAR TABLA EN "RESUMEN DEL CUATRIMESTRE" ---
-    slide_resumen = buscar_diapositiva(prs, "Resumen del cuatrimestre")
-    if slide_resumen:
-        # Insertamos la tabla debajo del título
-        df_to_ppt_table(slide_resumen, df, Inches(0.5), Inches(2), Inches(9), Inches(4))
+    # Definimos el layout para nuevas diapositivas (5 = Title Only, suele ser estándar)
+    # Si la plantilla no tiene 6 layouts, usamos el último disponible
+    layout_index = 5 if len(prs.slide_layouts) > 5 else len(prs.slide_layouts) - 1
+    layout_solo_titulo = prs.slide_layouts[layout_index]
+
+    # 3. AÑADIR NUEVA SLIDE PARA LA TABLA DATAFRAME
+    slide_tabla = prs.slides.add_slide(layout_solo_titulo)
+    if slide_tabla.shapes.title:
+        slide_tabla.shapes.title.text = "Resumen de Datos (Tabla)"
     
-    # --- 2. PLACEHOLDERS PARA FUNCIONES FUTURAS (IA) ---
+    df_to_ppt_table(slide_tabla, df, Inches(0.5), Inches(2), Inches(9), Inches(4))
     
-    # Slide: Informe sobre los partes de asignatura (Docentes)
-    slide_partes_docentes = buscar_diapositiva(prs, "Informe sobre los partes de asignatura de docentes")
-    if slide_partes_docentes:
-        agregar_placeholder_ia(slide_partes_docentes, "AQUÍ SE GENERARÁ EL RESUMEN IA DE DOCENTES")
+    # 4. AÑADIR NUEVAS SLIDES PARA PLACEHOLDERS IA
+    # Docentes
+    slide_ia_doc = prs.slides.add_slide(layout_solo_titulo)
+    if slide_ia_doc.shapes.title:
+        slide_ia_doc.shapes.title.text = "Informe Docentes (IA)"
+    agregar_placeholder_ia(slide_ia_doc, "AQUÍ SE GENERARÁ EL RESUMEN IA DE DOCENTES")
 
-    # Slide: Informe sobre los partes de asignatura de delegados
-    slide_partes_delegados = buscar_diapositiva(prs, "Informe sobre los partes de asignatura de delegados")
-    if slide_partes_delegados:
-        agregar_placeholder_ia(slide_partes_delegados, "AQUÍ SE GENERARÁ EL RESUMEN IA DE DELEGADOS")
+    # Delegados
+    slide_ia_del = prs.slides.add_slide(layout_solo_titulo)
+    if slide_ia_del.shapes.title:
+        slide_ia_del.shapes.title.text = "Informe Delegados (IA)"
+    agregar_placeholder_ia(slide_ia_del, "AQUÍ SE GENERARÁ EL RESUMEN IA DE DELEGADOS")
 
-    # Slide: Coordinación entre asignaturas
-    slide_coordinacion = buscar_diapositiva(prs, "Coordinación entre asignaturas")
-    if slide_coordinacion:
-        agregar_placeholder_ia(slide_coordinacion, "AQUÍ IRÁ LA INFO DE COORDINACIÓN")
+    # Coordinación
+    slide_ia_coord = prs.slides.add_slide(layout_solo_titulo)
+    if slide_ia_coord.shapes.title:
+        slide_ia_coord.shapes.title.text = "Coordinación (IA)"
+    agregar_placeholder_ia(slide_ia_coord, "AQUÍ IRÁ LA INFO DE COORDINACIÓN")
 
-    # --- 3. AÑADIR GRÁFICAS ---
-    # Las añadimos al final porque python-pptx no permite insertar en medio fácilmente.
-    layout_grafica = prs.slide_layouts[1] # Título y objeto
-    
-    if len(prs.slide_layouts) > 5:
-        layout_grafica = prs.slide_layouts[5] # Intentamos usar Solo Título
-
+    # 5. AÑADIR NUEVAS SLIDES PARA GRÁFICAS
     for titulo_grafica, figura in lista_figuras:
-        slide = prs.slides.add_slide(layout_grafica)
+        slide_grafica = prs.slides.add_slide(layout_solo_titulo)
         
         # Título
-        if slide.shapes.title:
-            slide.shapes.title.text = titulo_grafica
+        if slide_grafica.shapes.title:
+            slide_grafica.shapes.title.text = titulo_grafica
         
         # Imagen
         image_stream = io.BytesIO()
         figura.savefig(image_stream, format='png', bbox_inches='tight', dpi=150)
         image_stream.seek(0)
         
-        slide.shapes.add_picture(image_stream, Inches(1), Inches(1.5), width=Inches(8))
+        slide_grafica.shapes.add_picture(image_stream, Inches(1), Inches(1.5), width=Inches(8))
 
-    # --- GUARDAR ---
+    # GUARDAR
     output = io.BytesIO()
     prs.save(output)
     output.seek(0)
