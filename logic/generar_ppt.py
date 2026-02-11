@@ -1,4 +1,5 @@
 import io
+import json  # Importamos librería para leer el archivo
 import pandas as pd
 from pptx import Presentation
 from pptx.util import Inches, Pt
@@ -66,9 +67,45 @@ def agregar_placeholder_ia(slide, texto_marcador):
     p.font.italic = True
     p.alignment = PP_ALIGN.CENTER
 
-def generar_ppt(df, lista_figuras):
+def reemplazar_marcadores(prs, diccionario_datos):
+    """
+    Recorre TODA la presentación sustituyendo las claves del diccionario 
+    por sus valores, manteniendo el estilo original.
+    """
+    if not diccionario_datos:
+        return
+
+    def sustituir_en_parrafo(paragraph, datos):
+        """Función auxiliar para procesar un párrafo."""
+        for run in paragraph.runs:
+            texto_run = run.text
+            for marcador, valor in datos.items():
+                if marcador in texto_run:
+                    # str(valor) asegura que no falle si el dato es un número
+                    run.text = texto_run.replace(marcador, str(valor))
+
+    # Recorremos todas las diapositivas
+    for slide in prs.slides:
+        for shape in slide.shapes:
+            # Caso A: Cuadros de texto
+            if shape.has_text_frame:
+                for paragraph in shape.text_frame.paragraphs:
+                    sustituir_en_parrafo(paragraph, diccionario_datos)
+            
+            # Caso B: Tablas
+            if shape.has_table:
+                for row in shape.table.rows:
+                    for cell in row.cells:
+                        for paragraph in cell.text_frame.paragraphs:
+                            sustituir_en_parrafo(paragraph, diccionario_datos)
+
+def generar_ppt(df, lista_figuras, ruta_json=None):
     """
     Carga la plantilla fija y rellena datos en slides específicas.
+    Args:
+        df: DataFrame para la tabla resumen.
+        lista_figuras: Lista de tuplas (titulo, figura_matplotlib).
+        ruta_json: (Opcional) Ruta al archivo .json con los datos a sustituir.
     """
     # 1. Cargar plantilla desde la carpeta assets
     ruta_plantilla = "assets/Plantilla_ReunionesCoordinacionFinCuatrimestre.pptx"
@@ -79,6 +116,16 @@ def generar_ppt(df, lista_figuras):
         print(f"Error cargando plantilla: {e}")
         prs = Presentation()
 
+    # --- NUEVO: CARGAR JSON Y SUSTITUIR ---
+    if ruta_json:
+        try:
+            with open(ruta_json, 'r', encoding='utf-8') as f:
+                datos_diccionario = json.load(f)
+            # Llamamos a la función de reemplazo con los datos cargados
+            reemplazar_marcadores(prs, datos_diccionario)
+        except Exception as e:
+            print(f"Error cargando o procesando el archivo JSON: {e}")
+
     # --- 1. INSERTAR TABLA EN "RESUMEN DEL CUATRIMESTRE" ---
     slide_resumen = buscar_diapositiva(prs, "Resumen del cuatrimestre")
     if slide_resumen:
@@ -88,7 +135,6 @@ def generar_ppt(df, lista_figuras):
     # --- 2. PLACEHOLDERS PARA FUNCIONES FUTURAS (IA) ---
     
     # Slide: Informe sobre los partes de asignatura (Docentes)
-    # Nota: Tu plantilla tiene dos diapos con títulos parecidos, buscamos la específica
     slide_partes_docentes = buscar_diapositiva(prs, "Informe sobre los partes de asignatura de docentes")
     if slide_partes_docentes:
         agregar_placeholder_ia(slide_partes_docentes, "AQUÍ SE GENERARÁ EL RESUMEN IA DE DOCENTES")
@@ -105,7 +151,6 @@ def generar_ppt(df, lista_figuras):
 
     # --- 3. AÑADIR GRÁFICAS ---
     # Las añadimos al final porque python-pptx no permite insertar en medio fácilmente.
-    # Usamos el layout 5 (Title Only) o el que tenga la plantilla.
     layout_grafica = prs.slide_layouts[1] # Título y objeto
     
     if len(prs.slide_layouts) > 5:
