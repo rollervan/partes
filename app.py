@@ -11,6 +11,7 @@ from logic.generar_resumen_datos import generar_resumen_datos
 from logic.generar_partes_docentes import generar_partes_docentes
 from logic.genera_graficas import genera_graficas
 from logic.generar_ppt import generar_ppt 
+# NUEVO IMPORT
 from logic.generar_acta_texto import generar_acta_texto
 
 # --- CONFIGURACIÓN DE PÁGINA ---
@@ -32,8 +33,6 @@ with st.sidebar:
     
     # 1. Subida de Archivo de Datos (SOLO EL EXCEL)
     uploaded_file = st.file_uploader("Cargar Excel de Encuestas", type=["xlsx", "xls"])
-    
-    # NOTA: Ya no pedimos la plantilla PPT aquí porque está en la carpeta assets
     
     st.markdown("---")
     
@@ -129,18 +128,52 @@ if uploaded_file is not None:
                     st.markdown("### 📊 Presentación PowerPoint")
                     st.info("Genera el PPT rellenando la plantilla corporativa automáticamente.")
                     
-                    # --- NUEVO: CARGA DE JSON PARA PPT ---
-                    st.markdown("#### Datos del Acta (Opcional)")
+                    # ==========================================
+                    # NUEVO: LEER PLANTILLA TXT Y GENERAR PROMPT
+                    # ==========================================
+                    st.markdown("#### 1. Preparar Datos (IA)")
+                    
+                    # Ruta al archivo de texto que creaste en el paso anterior
+                    ruta_plantilla_txt = "assets/prompt_instrucciones.txt"
+                    
+                    # Verificamos si existe el archivo antes de intentar leerlo
+                    if not os.path.exists(ruta_plantilla_txt):
+                        st.warning(f"⚠️ No se encuentra el archivo: {ruta_plantilla_txt}. Por favor créalo en la carpeta assets.")
+                    else:
+                        with st.expander("📋 Generar Prompt para copiar"):
+                            st.caption("Copia este texto y pégalo en ChatGPT/Claude para obtener el JSON.")
+                            
+                            # 1. Leer instrucciones del archivo TXT
+                            try:
+                                with open(ruta_plantilla_txt, "r", encoding="utf-8") as f:
+                                    instrucciones_prompt = f.read()
+                                
+                                # 2. Generar el texto plano de los datos (tu función lógica)
+                                texto_datos = generar_acta_texto(df_subgrupo)
+                                
+                                # 3. Concatenar
+                                prompt_completo = instrucciones_prompt + "\n\n" + texto_datos
+                                
+                                # 4. Mostrar bloque de código con botón de copiar nativo
+                                st.code(prompt_completo, language="text")
+                            except Exception as e:
+                                st.error(f"Error al leer la plantilla o generar texto: {e}")
+
+                    st.markdown("---")
+
+                    # ==========================================
+                    # CARGA DE JSON Y GENERACIÓN PPT (Lógica original)
+                    # ==========================================
+                    st.markdown("#### 2. Generar PPT")
+                    
                     uploaded_json = st.file_uploader(
-                        "Sube el JSON con datos del acta (generado por IA)", 
+                        "Sube el JSON generado por la IA (Opcional)", 
                         type=["json"],
                         help="Si subes este archivo, se rellenarán los textos de la plantilla."
                     )
                     
                     if uploaded_json:
                         st.success("✅ JSON cargado. Se usará para rellenar la plantilla.")
-
-                    st.markdown("---")
                     
                     # Botón para generar el PPT
                     if st.button("Generar PowerPoint", key="btn_prep_ppt"):
@@ -152,13 +185,11 @@ if uploaded_file is not None:
                                 # 2. GESTIÓN DEL ARCHIVO JSON TEMPORAL
                                 ruta_temporal_json = None
                                 if uploaded_json is not None:
-                                    # Guardamos el archivo en disco temporalmente porque generar_ppt espera una ruta
                                     ruta_temporal_json = f"temp_acta_{titulacion_seleccionada}.json"
                                     with open(ruta_temporal_json, "wb") as f:
                                         f.write(uploaded_json.getbuffer())
                                 
                                 # 3. Generamos el archivo PPT
-                                # Pasamos la ruta del json (si existe) o None
                                 buffer_ppt = generar_ppt(
                                     df_resumen, 
                                     figs_para_ppt, 
