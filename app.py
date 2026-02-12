@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import io
-import os  # NUEVO: Para gestionar el borrado del archivo temporal
+import os
 
 # --- IMPORTS DE TU LÓGICA ---
 import logic.utils as utils 
@@ -10,8 +10,8 @@ from logic.obtener_datos_subgrupo import obtener_datos_subgrupo
 from logic.generar_resumen_datos import generar_resumen_datos
 from logic.generar_partes_docentes import generar_partes_docentes
 from logic.genera_graficas import genera_graficas
-# NUEVO IMPORT PARA EL POWERPOINT
 from logic.generar_ppt import generar_ppt 
+from logic.generar_acta_texto import generar_acta_texto
 
 # --- CONFIGURACIÓN DE PÁGINA ---
 st.set_page_config(
