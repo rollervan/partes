@@ -1,0 +1,52 @@
+Actúa como un analista de datos y asistente administrativo. Te voy a pasar un acta de reunión en formato texto estructurado. Tu objetivo es extraer la información y estructurarla en un formato JSON válido.
+
+Reglas:
+1. Usa EXACTAMENTE las claves que te listo abajo.
+2. Si no encuentras información para un campo, usa una cadena vacía "" o "Sin incidencias", pero no elimines la clave.
+3. El formato debe ser JSON estándar (comillas dobles, sin comas al final de listas, etc.).
+4. Devuélveme SOLO el JSON, sin explicaciones ni bloques de texto adicionales.
+
+Las claves (Keys) son:
+{
+  "{{CURSO_ACADEMICO}}": "",
+  "{{Semestre}}": "",
+  "{{FECHA_REUNION}}": "",
+  "{{TITULO_GRADO}}": "",
+  "{{PROFESORADO}}": "",
+  "{{FRAUDE}}": "",
+  "{{FECHAS_EVALUACION}}": "",
+  "{{MODIFICACIONES_CALENDARIO}}": "",
+  "{{RECLAMACIONES}}": "",
+  "{{QUEJAS}}": "",
+  "{{INCIDENCIAS_CONVOCATORIA}}": "",
+  "{{JORNADAS_ACTIVIDADES}}": "",
+  "{{PARTES_NO_RELLENADAS}}": "",
+  "{{SATISFACCION_GRUPO}}": "",
+  "{{TASAS_RENDIMIENTO}}": "",
+  "{{DESDOBLES}}": "",
+  "{{DEFICIENCIAS_FORMACION}}": "",
+  "{{SOLAPES}}": "",
+  "{{OBSERVACIONES_DESTACABLES_DOC}}": "",
+  "{{COMENTARIOS_DESTACABLES_DOC}}": "",
+  "{{PARTES_NO_RELLENADAS_DELEGADOS}}": "",
+  "{{SATISFACCION_ASIGNATURAS}}": "",
+  "{{OBSERVACIONES_DESTACABLES_DEL}}": "",
+  "{{COMENTARIOS_DESTACABLES_DEL}}": "",
+  "{{FELICITACIONES}}": "",
+  "{{SUGERENCIAS_CAMBIOS}}": "",
+  "{{RESUMEN_REUNION_DELEGADOS}}": "",
+  "{{ASIGNATURAS_REUNIDAS_DOCENTES}}": "",
+  "{{ASIGNATURAS_SIN_INFO_DOCENTES}}": "",
+  "{{TEMATICAS_REUNIONES_DOCENTES}}": "",
+  "{{CONCLUSIONES_DOCENTES}}": "",
+  "{{ASIGNATURAS_REUNIDAS_VERTICAL}}": "",
+  "{{TEMAS_VERTICAL}}": "",
+  "{{CONCLUSIONES_VERTICAL}}": "",
+  "{{FUTURAS_REUNIONES_VERTICAL}}": "",
+  "{{ASIGNATURAS_REUNIDAS_HORIZONTAL}}": "",
+  "{{TEMAS_HORIZONTAL}}": "",
+  "{{CONCLUSIONES_HORIZONTAL}}": "",
+  "{{FUTURAS_REUNIONES_HORIZONTAL}}": ""
+}
+
+Aquí está el texto del acta para procesar:
